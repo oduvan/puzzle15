@@ -79,8 +79,9 @@ def test_move_up_valid():
         (9, 10, 7, 12),
         (13, 14, 11, 15)
     ))
-    result = matrix.move(state, -1, 0)
+    result, moved_tile = matrix.move(state, -1, 0)
     assert result == expected
+    assert moved_tile == 3
 
 
 def test_move_down_valid():
@@ -97,8 +98,9 @@ def test_move_down_valid():
         (9, 10, 0, 12),
         (13, 14, 11, 15)
     ))
-    result = matrix.move(state, 1, 0)
+    result, moved_tile = matrix.move(state, 1, 0)
     assert result == expected
+    assert moved_tile == 7
 
 
 def test_move_left_valid():
@@ -115,8 +117,9 @@ def test_move_left_valid():
         (9, 10, 7, 12),
         (13, 14, 11, 15)
     ))
-    result = matrix.move(state, 0, -1)
+    result, moved_tile = matrix.move(state, 0, -1)
     assert result == expected
+    assert moved_tile == 6
 
 
 def test_move_right_valid():
@@ -133,8 +136,9 @@ def test_move_right_valid():
         (9, 10, 7, 12),
         (13, 14, 11, 15)
     ))
-    result = matrix.move(state, 0, 1)
+    result, moved_tile = matrix.move(state, 0, 1)
     assert result == expected
+    assert moved_tile == 8
 
 
 def test_move_diagonal_valid():
@@ -151,8 +155,9 @@ def test_move_diagonal_valid():
         (9, 10, 7, 12),
         (13, 14, 11, 15)
     ))
-    result = matrix.move(state, -1, -1)
+    result, moved_tile = matrix.move(state, -1, -1)
     assert result == expected
+    assert moved_tile == 2
 
 
 def test_move_multiple_steps():
@@ -169,14 +174,15 @@ def test_move_multiple_steps():
         (9, 10, 13, 12),
         (0, 14, 11, 15)
     ))
-    result = matrix.move(state, 1, -2)
+    result, moved_tile = matrix.move(state, 1, -2)
     assert result == expected
+    assert moved_tile == 13
 
 
 # Invalid move tests
 
 def test_move_up_from_top_edge():
-    """Moving up from top row returns None."""
+    """Moving up from top row returns (None, None)."""
     state = matrix.square_to_flat((
         (1, 2, 0, 4),
         (5, 6, 3, 8),
@@ -184,11 +190,11 @@ def test_move_up_from_top_edge():
         (13, 14, 11, 15)
     ))
     result = matrix.move(state, -1, 0)
-    assert result is None
+    assert result == (None, None)
 
 
 def test_move_down_from_bottom_edge():
-    """Moving down from bottom row returns None."""
+    """Moving down from bottom row returns (None, None)."""
     state = matrix.square_to_flat((
         (1, 2, 3, 4),
         (5, 6, 7, 8),
@@ -196,11 +202,11 @@ def test_move_down_from_bottom_edge():
         (13, 14, 0, 15)
     ))
     result = matrix.move(state, 1, 0)
-    assert result is None
+    assert result == (None, None)
 
 
 def test_move_left_from_left_edge():
-    """Moving left from left column returns None."""
+    """Moving left from left column returns (None, None)."""
     state = matrix.square_to_flat((
         (1, 2, 3, 4),
         (0, 6, 7, 8),
@@ -208,11 +214,11 @@ def test_move_left_from_left_edge():
         (13, 14, 15, 9)
     ))
     result = matrix.move(state, 0, -1)
-    assert result is None
+    assert result == (None, None)
 
 
 def test_move_right_from_right_edge():
-    """Moving right from right column returns None."""
+    """Moving right from right column returns (None, None)."""
     state = matrix.square_to_flat((
         (1, 2, 3, 4),
         (5, 6, 7, 0),
@@ -220,11 +226,11 @@ def test_move_right_from_right_edge():
         (13, 14, 15, 12)
     ))
     result = matrix.move(state, 0, 1)
-    assert result is None
+    assert result == (None, None)
 
 
 def test_move_out_of_bounds_diagonal():
-    """Moving diagonally out of bounds returns None."""
+    """Moving diagonally out of bounds returns (None, None)."""
     state = matrix.square_to_flat((
         (0, 1, 2, 3),
         (4, 5, 6, 7),
@@ -232,7 +238,7 @@ def test_move_out_of_bounds_diagonal():
         (12, 13, 14, 15)
     ))
     result = matrix.move(state, -1, -1)
-    assert result is None
+    assert result == (None, None)
 
 
 # Move tests - 3x3 puzzle
@@ -249,8 +255,9 @@ def test_move_3x3_up():
         (4, 2, 6),
         (7, 8, 5)
     ))
-    result = matrix.move(state, -1, 0)
+    result, moved_tile = matrix.move(state, -1, 0)
     assert result == expected
+    assert moved_tile == 2
 
 
 def test_move_3x3_right():
@@ -265,8 +272,9 @@ def test_move_3x3_right():
         (4, 6, 0),
         (7, 8, 5)
     ))
-    result = matrix.move(state, 0, 1)
+    result, moved_tile = matrix.move(state, 0, 1)
     assert result == expected
+    assert moved_tile == 6
 
 
 # Immutability tests
@@ -280,11 +288,13 @@ def test_move_returns_new_tuple():
         (13, 14, 11, 15)
     ))
     original_state = state
-    result = matrix.move(state, -1, 0)
+    result, moved_tile = matrix.move(state, -1, 0)
 
     assert state == original_state
     assert result != state
     assert isinstance(result, tuple)
+    assert isinstance(moved_tile, int)
+    assert moved_tile == 3
 
 
 def test_state_is_hashable():
@@ -395,6 +405,90 @@ def test_square_to_flat_to_square_roundtrip():
     assert result == original
 
 
+# Replace with zeros tests
+
+def test_replace_with_zeros_empty_set():
+    """Keeping empty set zeros everything."""
+    state = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+    result = matrix.replace_with_zeros(state, set())
+    expected = (0, 0, 0, 0, 0, 0, 0, 0, 0)
+    assert result == expected
+
+
+def test_replace_with_zeros_single_tile():
+    """Keep only a single tile."""
+    state = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+    result = matrix.replace_with_zeros(state, {5})
+    expected = (0, 0, 0, 0, 5, 0, 0, 0, 0)
+    assert result == expected
+
+
+def test_replace_with_zeros_multiple_tiles():
+    """Keep only multiple specified tiles."""
+    state = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+    result = matrix.replace_with_zeros(state, {1, 2})
+    expected = (1, 2, 0, 0, 0, 0, 0, 0, 0)
+    assert result == expected
+
+
+def test_replace_with_zeros_half_tiles_3x3():
+    """Keep half the tiles in 3x3 puzzle."""
+    state = matrix.square_to_flat((
+        (1, 2, 3),
+        (4, 5, 6),
+        (7, 8, 0)
+    ))
+    result = matrix.replace_with_zeros(state, {1, 2, 5, 8})
+    expected = matrix.square_to_flat((
+        (1, 2, 0),
+        (0, 5, 0),
+        (0, 8, 0)
+    ))
+    assert result == expected
+
+
+def test_replace_with_zeros_half_tiles_4x4():
+    """Keep half the tiles in 4x4 puzzle."""
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 15, 0)
+    ))
+    result = matrix.replace_with_zeros(state, {1, 2, 3, 4, 9, 10, 11, 12})
+    expected = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (0, 0, 0, 0),
+        (9, 10, 11, 12),
+        (0, 0, 0, 0)
+    ))
+    assert result == expected
+
+
+def test_replace_with_zeros_nonexistent_tiles():
+    """Keeping nonexistent tiles zeros everything."""
+    state = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+    result = matrix.replace_with_zeros(state, {10, 11, 12})
+    expected = (0, 0, 0, 0, 0, 0, 0, 0, 0)
+    assert result == expected
+
+
+def test_replace_with_zeros_returns_tuple():
+    """replace_with_zeros returns a tuple."""
+    state = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+    result = matrix.replace_with_zeros(state, {5})
+    assert isinstance(result, tuple)
+
+
+def test_replace_with_zeros_immutable():
+    """replace_with_zeros doesn't modify original state."""
+    state = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+    original = state
+    result = matrix.replace_with_zeros(state, {1, 2, 6, 7, 8})
+    assert state == original
+    assert result != state
+
+
 # Edge case tests
 
 def test_move_zero_steps():
@@ -405,8 +499,9 @@ def test_move_zero_steps():
         (9, 10, 7, 12),
         (13, 14, 11, 15)
     ))
-    result = matrix.move(state, 0, 0)
+    result, moved_tile = matrix.move(state, 0, 0)
     assert result == state
+    assert moved_tile == 0  # Blank swaps with itself
 
 
 def test_move_from_corner_top_left():
@@ -417,10 +512,10 @@ def test_move_from_corner_top_left():
         (8, 9, 10, 11),
         (12, 13, 14, 15)
     ))
-    assert matrix.move(state, -1, 0) is None  # Can't move up
-    assert matrix.move(state, 0, -1) is None  # Can't move left
-    assert matrix.move(state, 1, 0) is not None  # Can move down
-    assert matrix.move(state, 0, 1) is not None  # Can move right
+    assert matrix.move(state, -1, 0) == (None, None)  # Can't move up
+    assert matrix.move(state, 0, -1) == (None, None)  # Can't move left
+    assert matrix.move(state, 1, 0) != (None, None)  # Can move down
+    assert matrix.move(state, 0, 1) != (None, None)  # Can move right
 
 
 def test_move_from_corner_bottom_right():
@@ -431,10 +526,10 @@ def test_move_from_corner_bottom_right():
         (9, 10, 11, 12),
         (13, 14, 15, 0)
     ))
-    assert matrix.move(state, 1, 0) is None  # Can't move down
-    assert matrix.move(state, 0, 1) is None  # Can't move right
-    assert matrix.move(state, -1, 0) is not None  # Can move up
-    assert matrix.move(state, 0, -1) is not None  # Can move left
+    assert matrix.move(state, 1, 0) == (None, None)  # Can't move down
+    assert matrix.move(state, 0, 1) == (None, None)  # Can't move right
+    assert matrix.move(state, -1, 0) != (None, None)  # Can move up
+    assert matrix.move(state, 0, -1) != (None, None)  # Can move left
 
 
 def test_solved_state_4x4():
@@ -451,8 +546,9 @@ def test_solved_state_4x4():
         (9, 10, 11, 12),
         (13, 14, 0, 15)
     ))
-    result = matrix.move(solved, 0, -1)
+    result, moved_tile = matrix.move(solved, 0, -1)
     assert result == expected
+    assert moved_tile == 15
 
 
 def test_solved_state_3x3():
@@ -467,8 +563,9 @@ def test_solved_state_3x3():
         (4, 5, 0),
         (7, 8, 6)
     ))
-    result = matrix.move(solved, -1, 0)
+    result, moved_tile = matrix.move(solved, -1, 0)
     assert result == expected
+    assert moved_tile == 6
 
 
 # Manhattan distance tests
@@ -571,6 +668,40 @@ def test_manhattan_distance_different_goals():
     assert distance == 1
 
 
+def test_manhattan_distance_half_zeros_3x3():
+    """Manhattan distance with half elements being zero (3x3)."""
+    current = matrix.square_to_flat((
+        (1, 2, 0),
+        (0, 5, 0),
+        (0, 8, 0)
+    ))
+    goal = matrix.square_to_flat((
+        (1, 0, 0),
+        (0, 0, 2),
+        (5, 8, 0)
+    ))
+    distance = matrix.manhattan_distance(current, goal)
+    assert distance == 4
+
+
+def test_manhattan_distance_half_zeros_4x4():
+    """Manhattan distance with half elements being zero (4x4)."""
+    current = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (0, 0, 0, 0),
+        (9, 10, 11, 12),
+        (0, 0, 0, 0)
+    ))
+    goal = matrix.square_to_flat((
+        (0, 0, 0, 0),
+        (1, 2, 3, 4),
+        (0, 0, 0, 0),
+        (9, 10, 11, 12)
+    ))
+    distance = matrix.manhattan_distance(current, goal)
+    assert distance == 8
+
+
 # Manhattan distance to win tests
 
 def test_manhattan_distance_to_win_solved_3x3():
@@ -661,6 +792,29 @@ def test_manhattan_distance_to_win_matches_general():
     distance_to_win = matrix.manhattan_distance_to_win(current)
 
     assert distance_general == distance_to_win
+
+
+def test_manhattan_distance_to_win_half_zeros_3x3():
+    """Manhattan distance to win with half elements being zero (3x3)."""
+    current = matrix.square_to_flat((
+        (2, 1, 0),
+        (0, 8, 0),
+        (0, 5, 0)
+    ))
+    distance = matrix.manhattan_distance_to_win(current)
+    assert distance == 4
+
+
+def test_manhattan_distance_to_win_half_zeros_4x4():
+    """Manhattan distance to win with half elements being zero (4x4)."""
+    current = matrix.square_to_flat((
+        (2, 1, 4, 3),
+        (0, 0, 0, 0),
+        (12, 11, 10, 9),
+        (0, 0, 0, 0)
+    ))
+    distance = matrix.manhattan_distance_to_win(current)
+    assert distance == 12
 
 
 # Compress/Decompress tests

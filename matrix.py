@@ -1,8 +1,18 @@
 """
 N-Puzzle array representation and operations.
 
-This module provides a flat array representation of square puzzles (9x1 for 3x3, 16x1 for 4x4, 25x1 for 5x5, etc.)
-and operations to move the blank space (0) in different directions.
+This module provides a tuple-based flat array representation of square puzzles
+(9x1 for 3x3, 16x1 for 4x4, 25x1 for 5x5, etc.) with efficient operations for
+puzzle manipulation, heuristic evaluation, and state compression.
+
+Features:
+    - Immutable tuple-based state representation (hashable, can be used in sets/dicts)
+    - Move operations: move blank tile by arbitrary vertical/horizontal steps
+    - Conversion utilities: flat array ↔ square matrix transformations
+    - Manhattan distance heuristics for A* search algorithms
+    - Compression: pack puzzle states into integers for efficient storage
+    - Universal support for any NxN puzzle size
+    - LRU caching for performance optimization
 """
 
 from typing import Optional, Tuple
@@ -12,6 +22,21 @@ from functools import lru_cache
 
 TFlat = Tuple[int, ...]
 TSquare = Tuple[Tuple[int, ...], ...]
+
+@lru_cache()
+def get_win(size: int) -> TFlat:
+    """
+    Get the winning position for a square puzzle of given size.
+
+    The winning position is tiles in order: 1, 2, 3, ..., N-1, 0
+    where 0 (blank) is in the last position.
+
+    Args:
+        size: Size of one dimension of the puzzle (e.g., 3 for 3x3, 4 for 4x4)
+    Returns:
+        Winning position as flat array
+    """
+    return tuple(range(1, size * size)) + (0,)
 
 
 @lru_cache(maxsize=128)
@@ -38,7 +63,7 @@ def get_size(state: TFlat) -> int:
     return _get_size_by_length(len(state))
 
 
-def move(state: TFlat, vertical: int, horizontal: int) -> Optional[TFlat]:
+def move(state: TFlat, vertical: int, horizontal: int) -> Tuple[Optional[TFlat], Optional[int]]:
     """
     Move the blank space (0) by the specified number of steps.
 
@@ -48,14 +73,15 @@ def move(state: TFlat, vertical: int, horizontal: int) -> Optional[TFlat]:
         horizontal: Number of steps to move horizontally (negative = left, positive = right)
 
     Returns:
-        New state with 0 moved, or None if move is invalid
+        Tuple of (new_state, moved_tile) where moved_tile is the value that moved,
+        or (None, None) if move is invalid
 
     Examples:
-        move(state, -1, 0)  # Move up by 1
-        move(state, 1, 0)   # Move down by 1
-        move(state, 0, -1)  # Move left by 1
-        move(state, 0, 1)   # Move right by 1
-        move(state, -2, 3)  # Move up 2 and right 3
+        new_state, tile = move(state, -1, 0)  # Move up by 1
+        new_state, tile = move(state, 1, 0)   # Move down by 1
+        new_state, tile = move(state, 0, -1)  # Move left by 1
+        new_state, tile = move(state, 0, 1)   # Move right by 1
+        new_state, tile = move(state, -2, 3)  # Move up 2 and right 3
     """
     size = get_size(state)
     zero_index = state.index(0)
@@ -70,18 +96,23 @@ def move(state: TFlat, vertical: int, horizontal: int) -> Optional[TFlat]:
 
     # Check if new position is within bounds
     if new_row < 0 or new_row >= size or new_col < 0 or new_col >= size:
-        return None
+        return None, None
 
     # Calculate new index
     new_index = new_row * size + new_col
 
+    # The tile that will move into the blank position
+    moved_tile = state[new_index]
+
     # Create new state by swapping positions
-    return tuple(
+    new_state = tuple(
         state[new_index] if i == zero_index else
         state[zero_index] if i == new_index else
         state[i]
         for i in range(len(state))
     )
+
+    return (new_state, moved_tile)
 
 
 def flat_to_square(state: TFlat) -> TSquare:
@@ -109,6 +140,28 @@ def square_to_flat(matrix: TSquare) -> TFlat:
         Flat array representation
     """
     return tuple(item for row in matrix for item in row)
+
+
+def replace_with_zeros(state: TFlat, tiles_to_keep: set) -> TFlat:
+    """
+    Keep only specified tiles, replace everything else with zeros.
+
+    This is useful for pattern database calculations where you want to
+    focus only on specific tiles and ignore all others.
+
+    Args:
+        state: Puzzle state as flat array
+        tiles_to_keep: Set of tile values to keep (all others become 0)
+
+    Returns:
+        New state with only specified tiles kept, rest replaced by 0
+
+    Example:
+        state = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+        result = replace_with_zeros(state, {1, 2, 5, 8})
+        # result = (1, 2, 0, 0, 5, 0, 0, 8, 0)
+    """
+    return tuple(tile if tile in tiles_to_keep else 0 for tile in state)
 
 
 def manhattan_distance(current: TFlat, goal: TFlat) -> int:
