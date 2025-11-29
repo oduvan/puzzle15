@@ -52,6 +52,7 @@ def ida_star(puzzle):
     bound = calculate_heuristic(puzzle)
     path = [puzzle]  # Path of puzzle states explored
     move_sequence = []  # Sequence of moves to reach current state
+    import pdb; pdb.set_trace()
     while True:
         # Search with current bound
         result = search(path, 0, bound, move_sequence)
