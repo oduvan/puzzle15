@@ -661,3 +661,123 @@ def test_manhattan_distance_to_win_matches_general():
     distance_to_win = matrix.manhattan_distance_to_win(current)
 
     assert distance_general == distance_to_win
+
+
+# Compress/Decompress tests
+
+def test_compress_decompress_3x3_solved():
+    """Compress and decompress roundtrip for solved 3x3."""
+    original = matrix.square_to_flat((
+        (1, 2, 3),
+        (4, 5, 6),
+        (7, 8, 0)
+    ))
+    compressed = matrix.compress(original)
+    decompressed = matrix.decompress(compressed, 3)
+    assert decompressed == original
+
+
+def test_compress_decompress_4x4_solved():
+    """Compress and decompress roundtrip for solved 4x4."""
+    original = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 15, 0)
+    ))
+    compressed = matrix.compress(original)
+    decompressed = matrix.decompress(compressed, 4)
+    assert decompressed == original
+
+
+def test_compress_decompress_5x5_solved():
+    """Compress and decompress roundtrip for solved 5x5."""
+    original = tuple(range(1, 25)) + (0,)
+    compressed = matrix.compress(original)
+    decompressed = matrix.decompress(compressed, 5)
+    assert decompressed == original
+
+
+def test_compress_decompress_3x3_scrambled():
+    """Compress and decompress roundtrip for scrambled 3x3."""
+    original = matrix.square_to_flat((
+        (8, 7, 6),
+        (5, 4, 3),
+        (2, 1, 0)
+    ))
+    compressed = matrix.compress(original)
+    decompressed = matrix.decompress(compressed, 3)
+    assert decompressed == original
+
+
+def test_compress_decompress_4x4_scrambled():
+    """Compress and decompress roundtrip for scrambled 4x4."""
+    original = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 0, 8),
+        (9, 10, 7, 12),
+        (13, 14, 11, 15)
+    ))
+    compressed = matrix.compress(original)
+    decompressed = matrix.decompress(compressed, 4)
+    assert decompressed == original
+
+
+def test_compress_returns_integer():
+    """Compress returns an integer."""
+    state = matrix.square_to_flat((
+        (1, 2, 3),
+        (4, 5, 6),
+        (7, 8, 0)
+    ))
+    compressed = matrix.compress(state)
+    assert isinstance(compressed, int)
+    assert compressed >= 0
+
+
+def test_compress_different_states_different_values():
+    """Different states compress to different integers."""
+    state1 = matrix.square_to_flat((
+        (1, 2, 3),
+        (4, 5, 6),
+        (7, 8, 0)
+    ))
+    state2 = matrix.square_to_flat((
+        (1, 2, 3),
+        (4, 0, 6),
+        (7, 5, 8)
+    ))
+    compressed1 = matrix.compress(state1)
+    compressed2 = matrix.compress(state2)
+    assert compressed1 != compressed2
+
+
+def test_decompress_returns_tuple():
+    """Decompress returns a tuple."""
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 15, 0)
+    ))
+    compressed = matrix.compress(state)
+    decompressed = matrix.decompress(compressed, 4)
+    assert isinstance(decompressed, tuple)
+    assert len(decompressed) == 16
+
+
+def test_compress_all_zeros():
+    """Compress handles all zeros correctly."""
+    original = tuple([0] * 9)
+    compressed = matrix.compress(original)
+    decompressed = matrix.decompress(compressed, 3)
+    assert decompressed == original
+    assert compressed == 0
+
+
+def test_compress_max_values_3x3():
+    """Compress handles maximum values for 3x3."""
+    original = (8, 7, 6, 5, 4, 3, 2, 1, 0)
+    compressed = matrix.compress(original)
+    decompressed = matrix.decompress(compressed, 3)
+    assert decompressed == original

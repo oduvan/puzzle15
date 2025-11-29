@@ -188,3 +188,92 @@ def manhattan_distance_to_win(current: TFlat) -> int:
 
     return distance
 
+
+@lru_cache()
+def _compress_attributes(size: int) -> int:
+    """
+    Calculate and cache the number of bits needed per value for a given puzzle size.
+
+    This is cached to avoid recalculating for the same puzzle size.
+
+    Args:
+        size: Size of one dimension of the puzzle (e.g., 3 for 3x3, 4 for 4x4)
+
+    Returns:
+        Number of bits required to represent any value in the puzzle.
+        For example: 3x3 needs 4 bits (max value 8), 5x5 needs 5 bits (max value 24).
+    """
+    return (size * size - 1).bit_length()
+
+
+def compress(state: TFlat) -> int:
+    """
+    Compress a puzzle state into a single integer.
+
+    This packs all tile values into bits for efficient storage.
+    Each value uses the minimum number of bits needed (e.g., 4 bits for 3x3/4x4, 5 bits for 5x5).
+
+    Args:
+        state: Puzzle state as flat array
+
+    Returns:
+        Compressed integer representation
+
+    Example:
+        state = (1, 2, 3, 4, 5, 6, 7, 8, 0)  # 3x3
+        compressed = compress(state)  # Returns integer with all values packed
+    """
+    size = get_size(state)
+    bits_per_value = _compress_attributes(size)
+    result = 0
+    for val in state:
+        result = (result << bits_per_value) | val
+    return result
+
+
+@lru_cache()
+def _decompress_attributes(size: int) -> Tuple[int, Tuple[int, ...]]:
+    """
+    Calculate and cache decompression parameters for a given puzzle size.
+
+    This precomputes the bit mask and shift amounts needed to extract each value
+    from the compressed integer, avoiding redundant calculations.
+
+    Args:
+        size: Size of one dimension of the puzzle (e.g., 3 for 3x3, 4 for 4x4)
+
+    Returns:
+        Tuple of (mask, shifts) where:
+        - mask: Bit mask to extract a single value (e.g., 0xF for 4 bits)
+        - shifts: Tuple of bit shift amounts for each position in the puzzle
+    """
+    length = size * size
+    bits_per_value = _compress_attributes(size)
+    mask = (1 << bits_per_value) - 1
+    shifts = tuple((length - 1 - i) * bits_per_value for i in range(length))
+    return mask, shifts
+
+
+def decompress(n: int, size: int) -> TFlat:
+    """
+    Decompress an integer back into a puzzle state.
+
+    Args:
+        n: Compressed integer representation
+        size: Size of one dimension of the puzzle (e.g., 3 for 3x3, 4 for 4x4)
+
+    Returns:
+        Puzzle state as flat array
+
+    Example:
+        compressed = 12345678
+        state = decompress(compressed, 3)  # Returns 3x3 puzzle state
+    """
+    mask, shifts = _decompress_attributes(size)
+
+    values = []
+    for shift in shifts:
+        val = (n >> shift) & mask
+        values.append(val)
+    return tuple(values)
+
