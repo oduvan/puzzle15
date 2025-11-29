@@ -8,21 +8,28 @@ cost calculation, pruning, cycle detection, and solution finding.
 import sys
 import os
 
-import model
+import matrix
 import calculate
-from model import Puzzle
+
+
+# Direction constants (matching calculate.py DIRECTIONS)
+# Direction tuples represent blank movement
+LEFT = (0, 1)    # Blank moves right (tile moves left)
+RIGHT = (0, -1)  # Blank moves left (tile moves right)
+UP = (-1, 0)     # Blank moves up (tile moves down)
+DOWN = (1, 0)    # Blank moves down (tile moves up)
 
 
 # Search function tests
 
 def test_search_finds_solved_puzzle():
     """Search returns True immediately for solved puzzle."""
-    puzzle = Puzzle(boardSize=4)
+    state = matrix.get_win(4)
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
     result = calculate.search(path, 0, 100, move_sequence)
@@ -33,14 +40,17 @@ def test_search_finds_solved_puzzle():
 
 def test_search_finds_one_move_solution():
     """Search finds solution one move away."""
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 0, 15]]
-    puzzle.blank_position = (3, 2)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 0, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
     # Bound of 2 should be enough (depth 1 + heuristic 1)
@@ -48,19 +58,22 @@ def test_search_finds_one_move_solution():
 
     assert result is True
     assert len(move_sequence) == 1
-    assert move_sequence[0] == Puzzle.LEFT  # Move blank right (tile 15 moves left)
+    assert move_sequence[0] == LEFT  # Move blank right (tile 15 moves left)
 
 
 def test_search_prunes_when_exceeding_bound():
     """Search returns cost when exceeding bound."""
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 0, 15]]
-    puzzle.blank_position = (3, 2)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 0, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
     # Bound of 0 is too low - should return the actual cost
@@ -73,22 +86,21 @@ def test_search_prunes_when_exceeding_bound():
 
 def test_search_avoids_cycles():
     """Search doesn't revisit states in current path."""
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 0, 15]]
-    puzzle.blank_position = (3, 2)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 0, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
     # Create a path that already contains a state
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
-    # Move right to create a new state
-    is_valid, next_puzzle = puzzle.simulateMove(Puzzle.RIGHT)
-    assert is_valid
-
-    # Now if we search, it should not revisit the original puzzle
+    # Now if we search, it should not revisit the original state
     # We can verify this by checking that search doesn't get stuck
     result = calculate.search(path, 0, 10, move_sequence)
 
@@ -98,16 +110,19 @@ def test_search_avoids_cycles():
 
 def test_search_doesnt_undo_previous_move():
     """Search skips moves that undo the previous move."""
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 0, 15]]
-    puzzle.blank_position = (3, 2)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 0, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     # Previous move was LEFT (tile 15 moved left, blank moved right)
-    move_sequence = [Puzzle.LEFT]
+    move_sequence = [LEFT]
 
     # Search should skip RIGHT (opposite of LEFT)
     # With bound high enough to explore
@@ -125,14 +140,17 @@ def test_search_doesnt_undo_previous_move():
 
 def test_search_returns_minimum_exceeded_cost():
     """Search returns minimum cost that exceeded bound."""
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 0, 14, 15]]
-    puzzle.blank_position = (3, 1)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 0, 14, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
     # Very low bound - should return minimum exceeded cost
@@ -145,14 +163,17 @@ def test_search_returns_minimum_exceeded_cost():
 
 def test_search_with_zero_depth():
     """Search works correctly with depth 0."""
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 0, 15]]
-    puzzle.blank_position = (3, 2)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 0, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
     # Depth 0, bound high enough
@@ -164,14 +185,17 @@ def test_search_with_zero_depth():
 
 def test_search_with_higher_depth():
     """Search uses depth parameter in cost calculation."""
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 0, 15]]
-    puzzle.blank_position = (3, 2)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 0, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
     # High depth with low bound should immediately exceed
@@ -183,14 +207,17 @@ def test_search_with_higher_depth():
 
 def test_search_two_moves_away():
     """Search finds solution two moves away."""
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 0, 14, 15]]
-    puzzle.blank_position = (3, 1)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 0, 14, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
     # Bound of 3 should be enough (depth 2 + heuristic ~1)
@@ -204,14 +231,17 @@ def test_search_returns_infinity_when_no_solution():
     """Search returns INFINITY when no valid moves lead to solution."""
     # This is hard to test without creating an impossible puzzle
     # For now, we test that search can return integer values
-    puzzle = Puzzle(boardSize=4)
-    puzzle.board = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 0, 15]]
-    puzzle.blank_position = (3, 2)
+    state = matrix.square_to_flat((
+        (1, 2, 3, 4),
+        (5, 6, 7, 8),
+        (9, 10, 11, 12),
+        (13, 14, 0, 15)
+    ))
 
     # Initialize pattern database
     calculate.init(4)
 
-    path = [puzzle]
+    path = [state]
     move_sequence = []
 
     # Very restrictive bound
