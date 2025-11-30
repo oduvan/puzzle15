@@ -935,3 +935,214 @@ def test_compress_max_values_3x3():
     compressed = matrix.compress(original)
     decompressed = matrix.decompress(compressed, 3)
     assert decompressed == original
+
+
+# Move compression tests
+
+def test_compress_moves_empty_sequence():
+    """Compress empty move sequence."""
+    moves = []
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == []
+    assert (packed & 0xFF) == 0  # Length should be 0
+
+
+def test_compress_moves_single_up():
+    """Compress single upward move."""
+    moves = [(-1, 0)]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+    assert (packed & 0xFF) == 1  # Length should be 1
+
+
+def test_compress_moves_single_down():
+    """Compress single downward move."""
+    moves = [(1, 0)]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+
+
+def test_compress_moves_single_left():
+    """Compress single left move."""
+    moves = [(0, -1)]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+
+
+def test_compress_moves_single_right():
+    """Compress single right move."""
+    moves = [(0, 1)]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+
+
+def test_compress_moves_all_directions():
+    """Compress sequence with all four directions."""
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+    assert (packed & 0xFF) == 4  # Length should be 4
+
+
+def test_compress_moves_long_sequence():
+    """Compress longer move sequence."""
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, 0), (0, 1), (1, 0)]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+    assert (packed & 0xFF) == 7  # Length should be 7
+
+
+def test_compress_moves_very_long_sequence():
+    """Compress very long move sequence (50 moves)."""
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1)] * 12 + [(1, 0), (0, -1)]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+    assert len(unpacked) == 50
+
+
+def test_compress_moves_repeated_moves():
+    """Compress sequence with repeated same moves."""
+    moves = [(-1, 0)] * 10
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+    assert all(m == (-1, 0) for m in unpacked)
+
+
+def test_compress_moves_returns_integer():
+    """Compress moves returns an integer."""
+    moves = [(-1, 0), (0, 1), (1, 0)]
+    packed = matrix.compress_moves(moves)
+    assert isinstance(packed, int)
+    assert packed >= 0
+
+
+def test_compress_moves_different_sequences_different_values():
+    """Different move sequences compress to different integers."""
+    moves1 = [(-1, 0), (1, 0), (0, -1)]
+    moves2 = [(-1, 0), (1, 0), (0, 1)]
+    packed1 = matrix.compress_moves(moves1)
+    packed2 = matrix.compress_moves(moves2)
+    assert packed1 != packed2
+
+
+def test_compress_moves_order_matters():
+    """Move order affects compressed value."""
+    moves1 = [(-1, 0), (1, 0)]
+    moves2 = [(1, 0), (-1, 0)]
+    packed1 = matrix.compress_moves(moves1)
+    packed2 = matrix.compress_moves(moves2)
+    assert packed1 != packed2
+
+
+def test_compress_moves_length_embedded():
+    """Length is properly embedded in lower 8 bits."""
+    for length in [1, 5, 10, 20, 50, 100]:
+        moves = [(-1, 0)] * length
+        packed = matrix.compress_moves(moves)
+        extracted_length = packed & 0xFF
+        assert extracted_length == length
+
+
+def test_compress_moves_roundtrip_typical_solution():
+    """Roundtrip for typical puzzle solution sequence."""
+    moves = [
+        (1, 0), (0, 1), (-1, 0), (-1, 0),
+        (0, -1), (1, 0), (1, 0), (0, 1)
+    ]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+
+
+def test_compress_moves_memory_efficiency():
+    """Verify compression is memory efficient."""
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1)] * 10  # 40 moves
+    packed = matrix.compress_moves(moves)
+
+    # Packed should be much smaller than storing 40 tuples
+    # 40 moves * 2 bits = 80 bits + 8 bits length = 88 bits = 11 bytes
+    # vs 40 tuples * ~16 bytes each = ~640 bytes
+    assert packed.bit_length() <= 88
+
+
+def test_compress_moves_max_length():
+    """Test with maximum reasonable length (255 moves)."""
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1)] * 63 + [(1, 0), (0, -1), (-1, 0)]
+    assert len(moves) == 255
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert unpacked == moves
+    assert len(unpacked) == 255
+
+
+def test_decompress_moves_returns_list():
+    """Decompress moves returns a list."""
+    moves = [(-1, 0), (0, 1), (1, 0)]
+    packed = matrix.compress_moves(moves)
+    unpacked = matrix.decompress_moves(packed)
+    assert isinstance(unpacked, list)
+
+
+def test_compress_moves_encoding_values():
+    """Verify specific encoding values for moves."""
+    # Up should be 00, Down 01, Left 10, Right 11
+    up = matrix.compress_moves([(-1, 0)])
+    down = matrix.compress_moves([(1, 0)])
+    left = matrix.compress_moves([(0, -1)])
+    right = matrix.compress_moves([(0, 1)])
+
+    # Extract just the move bits (skip length byte)
+    assert (up >> 8) == 0b00
+    assert (down >> 8) == 0b01
+    assert (left >> 8) == 0b10
+    assert (right >> 8) == 0b11
+
+
+def test_get_moves_length_empty():
+    """Get length of empty move sequence."""
+    packed = matrix.compress_moves([])
+    length = matrix.get_moves_length(packed)
+    assert length == 0
+
+
+def test_get_moves_length_single():
+    """Get length of single move."""
+    packed = matrix.compress_moves([(-1, 0)])
+    length = matrix.get_moves_length(packed)
+    assert length == 1
+
+
+def test_get_moves_length_multiple():
+    """Get length of multiple moves."""
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    packed = matrix.compress_moves(moves)
+    length = matrix.get_moves_length(packed)
+    assert length == 4
+
+
+def test_get_moves_length_matches_decompress():
+    """get_moves_length should match len(decompress_moves())."""
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, 0), (0, 1)]
+    packed = matrix.compress_moves(moves)
+
+    length_fast = matrix.get_moves_length(packed)
+    length_slow = len(matrix.decompress_moves(packed))
+
+    assert length_fast == length_slow == len(moves)
+
+
+def test_get_moves_length_long_sequence():
+    """Get length of long move sequence."""
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1)] * 25  # 100 moves
+    packed = matrix.compress_moves(moves)
+    length = matrix.get_moves_length(packed)
+    assert length == 100

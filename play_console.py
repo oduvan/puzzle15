@@ -6,6 +6,7 @@ with visual board state illustrations at each step.
 """
 
 import sys
+import argparse
 import matrix
 import calculate
 
@@ -104,8 +105,20 @@ def main():
     Reads puzzle from stdin, solves it using IDA*, and displays
     the solution sequence with board visualizations.
     """
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='N-Puzzle Console Solver')
+    parser.add_argument('--no-frontier', action='store_true',
+                        help='Disable frontier optimization (uses less memory but may be slower)')
+    args = parser.parse_args()
+
+    use_frontier = not args.no_frontier
+
     print("N-Puzzle Console Solver")
     print("=" * 50)
+    if use_frontier:
+        print("Frontier optimization: ENABLED (faster, more memory)")
+    else:
+        print("Frontier optimization: DISABLED (slower, less memory)")
     print()
     print("Enter puzzle as space-separated numbers (0 = blank):")
     print("Example for 15-puzzle: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 0 15")
@@ -139,8 +152,8 @@ def main():
         return
 
     # Solve puzzle
-    print("\nSolving puzzle using IDA* algorithm...")
-    move_sequence = calculate.ida_star(state)
+    print(f"\nSolving puzzle using IDA* algorithm...")
+    move_sequence = calculate.ida_star(state, use_frontier=use_frontier)
 
     if move_sequence is None:
         print("\nNo solution found! The puzzle may be unsolvable.")

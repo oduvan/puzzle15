@@ -22,6 +22,9 @@ test:
 run:
 	python3 play_console.py
 
+run-no-frontier:
+	python3 play_console.py --no-frontier
+
 # Generate pattern database
 pattern_db:
 	python3 pattern_db.py

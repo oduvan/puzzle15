@@ -330,3 +330,103 @@ def decompress(n: int, size: int) -> TFlat:
         values.append(val)
     return tuple(values)
 
+
+# Move encoding constants (2 bits per move)
+_MOVE_UP = 0b00      # (-1, 0)
+_MOVE_DOWN = 0b01    # (1, 0)
+_MOVE_LEFT = 0b10    # (0, -1)
+_MOVE_RIGHT = 0b11   # (0, 1)
+
+_MOVE_TO_CODE = {
+    (-1, 0): _MOVE_UP,
+    (1, 0): _MOVE_DOWN,
+    (0, -1): _MOVE_LEFT,
+    (0, 1): _MOVE_RIGHT,
+}
+
+_CODE_TO_MOVE = {
+    _MOVE_UP: (-1, 0),
+    _MOVE_DOWN: (1, 0),
+    _MOVE_LEFT: (0, -1),
+    _MOVE_RIGHT: (0, 1),
+}
+
+
+def compress_moves(moves: list) -> int:
+    """
+    Compress a sequence of moves into a single integer with length embedded.
+
+    Format: [Lower 8 bits: length][Higher bits: compressed moves]
+    Each move is encoded as 2 bits:
+    - Up (-1, 0): 00
+    - Down (1, 0): 01
+    - Left (0, -1): 10
+    - Right (0, 1): 11
+
+    Args:
+        moves: List of move tuples, e.g., [(-1, 0), (0, 1), (1, 0)]
+
+    Returns:
+        Compressed integer with length and moves packed
+
+    Example:
+        moves = [(-1, 0), (1, 0), (0, -1)]  # up, down, left
+        compressed = compress_moves(moves)
+        # Lower 8 bits: 3 (length)
+        # Higher bits: 0b00_01_10 (moves)
+    """
+    length = len(moves)
+    compressed_moves = 0
+    for move in moves:
+        code = _MOVE_TO_CODE[move]
+        compressed_moves = (compressed_moves << 2) | code
+    # Pack: moves in higher bits, length in lower 8 bits
+    return (compressed_moves << 8) | length
+
+
+def decompress_moves(packed: int) -> list:
+    """
+    Decompress an integer back into a sequence of moves.
+
+    Args:
+        packed: Packed integer with length in lower 8 bits and moves in higher bits
+
+    Returns:
+        List of move tuples
+
+    Example:
+        packed = compress_moves([(-1, 0), (1, 0), (0, -1)])
+        moves = decompress_moves(packed)  # [(-1, 0), (1, 0), (0, -1)]
+    """
+    # Extract length from lower 8 bits
+    length = packed & 0xFF
+    # Extract compressed moves from higher bits
+    compressed_moves = packed >> 8
+
+    moves = []
+    mask = 0b11  # 2 bits
+    for i in range(length):
+        shift = (length - 1 - i) * 2
+        code = (compressed_moves >> shift) & mask
+        moves.append(_CODE_TO_MOVE[code])
+    return moves
+
+
+def get_moves_length(packed: int) -> int:
+    """
+    Extract the length of a compressed move sequence without decompressing.
+
+    This is more efficient than decompressing when you only need the count.
+
+    Args:
+        packed: Packed integer with length in lower 8 bits and moves in higher bits
+
+    Returns:
+        Number of moves in the sequence
+
+    Example:
+        packed = compress_moves([(-1, 0), (1, 0), (0, -1)])
+        length = get_moves_length(packed)  # 3
+    """
+    return packed & 0xFF
+
