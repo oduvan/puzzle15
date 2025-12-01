@@ -18,6 +18,7 @@ Features:
 from typing import Optional, Tuple
 import math
 from functools import lru_cache
+from bisect import insort
 
 
 TFlat = Tuple[int, ...]
@@ -240,6 +241,49 @@ def manhattan_distance_to_win(current: TFlat) -> int:
         distance += abs(current_row - goal_row) + abs(current_col - goal_col)
 
     return distance
+
+
+def is_solvable(state: TFlat) -> bool:
+    """
+    Check if a puzzle configuration is solvable using incremental sorted list approach.
+
+    This algorithm builds a sorted list incrementally while scanning tiles, computing
+    a parity sum based on inversions and blank position. For each tile, the index in
+    the sorted list gives the count of previously seen smaller tiles, which indirectly
+    counts inversions. The blank's row is added to account for position parity.
+
+    For the 15-puzzle (4x4) and other NxN puzzles where N is even:
+    - Solvable if parity sum is EVEN
+
+    For 3x3 and other NxN puzzles where N is odd:
+    - Solvable if parity sum is EVEN
+
+    Args:
+        state: Puzzle state as flat array
+
+    Returns:
+        True if solvable, False if unsolvable
+
+    Example:
+        For 4x4 (15-puzzle):
+        state = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 14, 0)
+        is_solvable(state)  # False (unsolvable - tiles 14 and 15 swapped)
+    """
+    size = get_size(state)
+    p = []
+    s = 0
+
+    for i in range(len(state)):
+        x = state[i]
+        row = i // size
+
+        if x == 0:
+            s += row  # Add row index for blank
+        else:
+            insort(p, x)
+            s += p.index(x)
+
+    return not s % 2  # Solvable if sum is EVEN
 
 
 @lru_cache()

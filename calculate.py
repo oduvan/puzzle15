@@ -55,6 +55,11 @@ def ida_star(state, use_frontier=True):
     if state == win_state:
         return []
 
+    # Check if puzzle is solvable
+    if not matrix.is_solvable(state):
+        print("Puzzle is unsolvable (fails solvability check)")
+        return None
+
     # Load pattern database if not already loaded
     if not pattern_databases:
         init(board_size)
